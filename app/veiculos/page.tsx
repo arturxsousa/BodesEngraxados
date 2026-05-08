@@ -1,0 +1,161 @@
+"use client";
+
+import { useState } from "react";
+import { useApp } from "@/lib/AppContext";
+
+const emptyForm = { placa: "", ano: "", modelo: "", versao: "", dono: "" };
+
+export default function VeiculosPage() {
+  const { veiculos, setVeiculos } = useApp();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+
+  function handleDelete(id: string) {
+    setVeiculos((prev) => prev.filter((v) => v.id !== id));
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const nextId = String(veiculos.length + 1).padStart(3, "0");
+    setVeiculos((prev) => [...prev, { id: nextId, ...form }]);
+    setForm(emptyForm);
+    setModalOpen(false);
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "#d9d0c0" }}>
+        <h1 className="text-3xl font-bold tracking-wide uppercase" style={{ color: "var(--color-charcoal)" }}>
+          Veículos
+        </h1>
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: "var(--color-rust)" }}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Novo Veículo
+        </button>
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b" style={{ borderColor: "#e5e0d5" }}>
+              {["ID", "Placa", "Ano", "Modelo", "Versão", "Dono", ""].map((col) => (
+                <th
+                  key={col}
+                  className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap"
+                  style={{ color: "var(--color-charcoal)" }}
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {veiculos.map((v, i) => (
+              <tr
+                key={v.id}
+                className="border-b transition-colors hover:bg-orange-50"
+                style={{ borderColor: i === veiculos.length - 1 ? "transparent" : "#f0ebe0" }}
+              >
+                <td className="px-4 py-3 font-mono font-semibold text-xs" style={{ color: "var(--color-rust)" }}>
+                  #{v.id}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs font-medium text-gray-700 whitespace-nowrap">{v.placa}</td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.ano}</td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.modelo}</td>
+                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{v.versao}</td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.dono}</td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => handleDelete(v.id)}
+                    className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50"
+                    aria-label="Deletar veículo"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {veiculos.length === 0 && (
+          <p className="text-center text-gray-400 py-12 text-sm">Nenhum veículo cadastrado.</p>
+        )}
+      </div>
+
+      {/* Modal — novo veículo */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#e5e0d5" }}>
+              <h2 className="text-base font-bold uppercase tracking-wide" style={{ color: "var(--color-charcoal)" }}>
+                Novo Veículo
+              </h2>
+              <button
+                onClick={() => { setModalOpen(false); setForm(emptyForm); }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+              {[
+                { label: "Placa", key: "placa", placeholder: "ABC-1234" },
+                { label: "Ano", key: "ano", placeholder: "2024" },
+                { label: "Modelo", key: "modelo", placeholder: "Toyota Corolla" },
+                { label: "Versão", key: "versao", placeholder: "XEi 2.0" },
+                { label: "Dono", key: "dono", placeholder: "Nome do proprietário" },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-teal)" }}>
+                    {label}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={placeholder}
+                    value={form[key as keyof typeof form]}
+                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-md border outline-none transition-colors focus:border-orange-400"
+                    style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }}
+                  />
+                </div>
+              ))}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setModalOpen(false); setForm(emptyForm); }}
+                  className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors hover:bg-gray-50"
+                  style={{ borderColor: "#d9d0c0", color: "var(--color-charcoal)" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "var(--color-rust)" }}
+                >
+                  Cadastrar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

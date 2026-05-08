@@ -39,3 +39,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# java / maven
+backend/target/
+*.class
+*.jar
+*.war
+
+# ide
+.idea/
+*.iml
+.vscode/
+
+# claude code
+.claude/
