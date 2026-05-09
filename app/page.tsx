@@ -1,11 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useApp } from "@/lib/AppContext";
+import { listarVeiculos } from "@/lib/api/veiculos";
 import CategoryChart from "@/components/CategoryChart";
 import RecentOrders from "@/components/RecentOrders";
 
 export default function DashboardPage() {
-  const { manutencoes, veiculos } = useApp();
+  const { manutencoes } = useApp();
+  const [totalVeiculos, setTotalVeiculos] = useState<number | null>(null);
+
+  useEffect(() => {
+    listarVeiculos()
+      .then((v) => setTotalVeiculos(v.length))
+      .catch(() => setTotalVeiculos(null));
+  }, []);
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -18,9 +27,9 @@ export default function DashboardPage() {
   });
 
   const stats = [
-    { label: "Manutenções no mês",  value: String(doMes.length),      icon: "🔧" },
-    { label: "Total de manutenções",value: String(manutencoes.length), icon: "📋" },
-    { label: "Veículos cadastrados",value: String(veiculos.length),    icon: "🚗" },
+    { label: "Manutenções no mês",  value: String(doMes.length),       icon: "🔧" },
+    { label: "Total de manutenções",value: String(manutencoes.length),  icon: "📋" },
+    { label: "Veículos cadastrados", value: totalVeiculos !== null ? String(totalVeiculos) : "—", icon: "🚗" },
   ];
 
   return (
