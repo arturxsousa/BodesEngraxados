@@ -1,35 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useApp } from "@/lib/AppContext";
 import { listarVeiculos } from "@/lib/api/veiculos";
+import { listarManutencoes } from "@/lib/api/manutencoes";
 import CategoryChart from "@/components/CategoryChart";
 import RecentOrders from "@/components/RecentOrders";
 
 export default function DashboardPage() {
-  const { manutencoes } = useApp();
   const [totalVeiculos, setTotalVeiculos] = useState<number | null>(null);
+  const [totalManutencoes, setTotalManutencoes] = useState<number | null>(null);
+  const [manutencoesDoMes, setManutencoesDoMes] = useState<number | null>(null);
 
   useEffect(() => {
     listarVeiculos()
       .then((v) => setTotalVeiculos(v.length))
       .catch(() => setTotalVeiculos(null));
+
+    const now = new Date();
+    const ano = now.getFullYear();
+    const mes = String(now.getMonth() + 1).padStart(2, "0");
+
+    listarManutencoes().then((lista) => {
+      setTotalManutencoes(lista.length);
+      setManutencoesDoMes(
+        lista.filter((m) => m.data.startsWith(`${ano}-${mes}`)).length
+      );
+    }).catch(() => {
+      setTotalManutencoes(null);
+      setManutencoesDoMes(null);
+    });
   }, []);
 
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  const doMes = manutencoes.filter((m) => {
-    const parts = m.data.split("/");
-    if (parts.length < 3) return false;
-    return Number(parts[1]) === currentMonth && Number(parts[2]) === currentYear;
-  });
-
   const stats = [
-    { label: "Manutenções no mês",  value: String(doMes.length),       icon: "🔧" },
-    { label: "Total de manutenções",value: String(manutencoes.length),  icon: "📋" },
-    { label: "Veículos cadastrados", value: totalVeiculos !== null ? String(totalVeiculos) : "—", icon: "🚗" },
+    { label: "Manutenções no mês",  value: manutencoesDoMes  !== null ? String(manutencoesDoMes)  : "—", icon: "🔧" },
+    { label: "Total de manutenções",value: totalManutencoes  !== null ? String(totalManutencoes)  : "—", icon: "📋" },
+    { label: "Veículos cadastrados", value: totalVeiculos    !== null ? String(totalVeiculos)     : "—", icon: "🚗" },
   ];
 
   return (

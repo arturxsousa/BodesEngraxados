@@ -1,7 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useApp, type Manutencao } from "@/lib/AppContext";
+import { useState, useEffect, useCallback } from "react";
+import {
+  listarManutencoes,
+  criarManutencao,
+  atualizarManutencao,
+  deletarManutencao,
+  formatarData,
+  type Manutencao,
+} from "@/lib/api/manutencoes";
+import { listarVeiculos } from "@/lib/api/veiculos";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 const CATEGORIAS = ["Revisão", "Freios", "Motor", "Suspensão", "Elétrica", "Funilaria", "Outros"];
@@ -17,11 +25,31 @@ const emptyForm = {
 };
 
 export default function ManutencoesPage() {
-  const { manutencoes, setManutencoes } = useApp();
+  const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
+  const [placas, setPlacas] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [salvando, setSalvando] = useState(false);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErro(null);
+      const [lista, veiculos] = await Promise.all([listarManutencoes(), listarVeiculos()]);
+      setManutencoes(lista);
+      setPlacas(veiculos.map((v) => v.placa));
+    } catch {
+      setErro("Não foi possível carregar os dados.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
 
   function openNew() {
     setEditingId(null);
@@ -30,8 +58,16 @@ export default function ManutencoesPage() {
   }
 
   function openEdit(m: Manutencao) {
-    setEditingId(m.id);
-    setForm({ categoria: m.categoria, data: m.data, placa: m.placa, km: m.km, descricao: m.descricao, pecas: m.pecas, observacoes: m.observacoes });
+    setEditingId(m.id!);
+    setForm({
+      categoria: m.categoria,
+      data: m.data,
+      placa: m.placa,
+      km: m.km,
+      descricao: m.descricao,
+      pecas: m.pecas ?? "",
+      observacoes: m.observacoes ?? "",
+    });
     setModalOpen(true);
   }
 
@@ -41,21 +77,35 @@ export default function ManutencoesPage() {
     setForm(emptyForm);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (confirmId === null) return;
-    setManutencoes((prev) => prev.filter((m) => m.id !== confirmId));
-    setConfirmId(null);
+    try {
+      await deletarManutencao(confirmId);
+      setManutencoes((prev) => prev.filter((m) => m.id !== confirmId));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Erro ao deletar manutenção");
+    } finally {
+      setConfirmId(null);
+    }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (editingId) {
-      setManutencoes((prev) => prev.map((m) => m.id === editingId ? { ...m, ...form } : m));
-    } else {
-      const nextId = String(manutencoes.length + 1).padStart(3, "0");
-      setManutencoes((prev) => [...prev, { id: nextId, ...form }]);
+    setSalvando(true);
+    try {
+      if (editingId !== null) {
+        const atualizada = await atualizarManutencao(editingId, form);
+        setManutencoes((prev) => prev.map((m) => m.id === editingId ? atualizada : m));
+      } else {
+        const nova = await criarManutencao(form);
+        setManutencoes((prev) => [nova, ...prev]);
+      }
+      closeModal();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Erro ao salvar manutenção");
+    } finally {
+      setSalvando(false);
     }
-    closeModal();
   }
 
   const field = (key: keyof typeof form, value: string) =>
@@ -67,37 +117,56 @@ export default function ManutencoesPage() {
         <h1 className="text-3xl font-bold tracking-wide uppercase" style={{ color: "var(--color-charcoal)" }}>
           Manutenções
         </h1>
-        <button
-          onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: "var(--color-rust)" }}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nova Manutenção
-        </button>
+        <div className="flex items-center gap-3">
+          {!loading && placas.length === 0 && (
+            <span className="text-xs text-gray-400 italic">Cadastre um veículo antes de registrar manutenções</span>
+          )}
+          <button
+            onClick={openNew}
+            disabled={placas.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ backgroundColor: "var(--color-rust)" }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nova Manutenção
+          </button>
+        </div>
       </div>
 
+      {erro && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border text-sm" style={{ backgroundColor: "#fff5f5", borderColor: "#fca5a5", color: "#b91c1c" }}>
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          {erro}
+          <button onClick={carregar} className="ml-auto underline font-medium">Tentar novamente</button>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b" style={{ borderColor: "#e5e0d5" }}>
-              {["ID", "Categoria", "Data", "Placa", "KM", "Descrição", "Peças Empregadas", "Observações", ""].map((col) => (
-                <th key={col} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "var(--color-charcoal)" }}>
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {manutencoes.map((m, i) => (
+        {loading ? (
+          <div className="flex justify-center items-center py-16 text-sm text-gray-400">Carregando...</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b" style={{ borderColor: "#e5e0d5" }}>
+                {["ID", "Categoria", "Data", "Placa", "KM", "Descrição", "Peças Empregadas", "Observações", ""].map((col) => (
+                  <th key={col} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "var(--color-charcoal)" }}>
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {manutencoes.map((m, i) => (
                 <tr key={m.id} className="border-b transition-colors hover:bg-orange-50" style={{ borderColor: i === manutencoes.length - 1 ? "transparent" : "#f0ebe0" }}>
                   <td className="px-4 py-3 font-mono font-semibold text-xs whitespace-nowrap" style={{ color: "var(--color-rust)" }}>#{m.id}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#f0ebe0", color: "var(--color-teal)" }}>{m.categoria}</span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">{m.data}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">{formatarData(m.data)}</td>
                   <td className="px-4 py-3 font-mono text-xs font-medium text-gray-700 whitespace-nowrap">{m.placa}</td>
                   <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{m.km} km</td>
                   <td className="px-4 py-3 text-gray-700 max-w-[160px] truncate">{m.descricao}</td>
@@ -110,7 +179,7 @@ export default function ManutencoesPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
                         </svg>
                       </button>
-                      <button onClick={() => setConfirmId(m.id)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar manutenção">
+                      <button onClick={() => setConfirmId(m.id!)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar manutenção">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -118,10 +187,11 @@ export default function ManutencoesPage() {
                     </div>
                   </td>
                 </tr>
-            ))}
-          </tbody>
-        </table>
-        {manutencoes.length === 0 && (
+              ))}
+            </tbody>
+          </table>
+        )}
+        {!loading && !erro && manutencoes.length === 0 && (
           <p className="text-center text-gray-400 py-12 text-sm">Nenhuma manutenção cadastrada.</p>
         )}
       </div>
@@ -163,7 +233,10 @@ export default function ManutencoesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-teal)" }}>Placa</label>
-                  <input type="text" required placeholder="ABC-1234" value={form.placa} onChange={(e) => field("placa", e.target.value)} className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400" style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }} />
+                  <select required value={form.placa} onChange={(e) => field("placa", e.target.value)} className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400" style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }}>
+                    <option value="">Selecione uma placa</option>
+                    {placas.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -179,7 +252,7 @@ export default function ManutencoesPage() {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-teal)" }}>Peças Empregadas</label>
-                <textarea rows={2} placeholder="Ex: Óleo 5W30, Filtro de ar..." value={form.pecas} onChange={(e) => field("pecas", e.target.value)} className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400 resize-none" style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }} />
+                <textarea required rows={2} placeholder="Ex: Óleo 5W30, Filtro de ar..." value={form.pecas} onChange={(e) => field("pecas", e.target.value)} className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400 resize-none" style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }} />
               </div>
 
               <div>
@@ -191,8 +264,8 @@ export default function ManutencoesPage() {
                 <button type="button" onClick={closeModal} className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors hover:bg-gray-50" style={{ borderColor: "#d9d0c0", color: "var(--color-charcoal)" }}>
                   Cancelar
                 </button>
-                <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: "var(--color-rust)" }}>
-                  {editingId ? "Salvar" : "Cadastrar"}
+                <button type="submit" disabled={salvando} className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60" style={{ backgroundColor: "var(--color-rust)" }}>
+                  {salvando ? "Salvando..." : editingId ? "Salvar" : "Cadastrar"}
                 </button>
               </div>
             </form>

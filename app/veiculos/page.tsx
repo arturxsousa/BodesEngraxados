@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/veiculos";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
-const emptyForm = { placa: "", ano: "", modelo: "", versao: "", dono: "" };
+const emptyForm = { placa: "", ano: "", marca: "", modelo: "", versao: "", chassi: "", proprietario: "" };
 
 export default function VeiculosPage() {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
@@ -44,7 +44,7 @@ export default function VeiculosPage() {
 
   function openEdit(v: Veiculo) {
     setEditingId(v.id!);
-    setForm({ placa: v.placa, ano: v.ano, modelo: v.modelo, versao: v.versao ?? "", dono: v.dono ?? "" });
+    setForm({ placa: v.placa, ano: v.ano, marca: v.marca, modelo: v.modelo, versao: v.versao, chassi: v.chassi, proprietario: v.proprietario });
     setModalOpen(true);
   }
 
@@ -123,7 +123,7 @@ export default function VeiculosPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ borderColor: "#e5e0d5" }}>
-                {["ID", "Placa", "Ano", "Modelo", "Versão", "Dono", ""].map((col) => (
+                {["ID", "Placa", "Ano", "Marca", "Modelo", "Versão", "Chassi", "Proprietário", ""].map((col) => (
                   <th key={col} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "var(--color-charcoal)" }}>
                     {col}
                   </th>
@@ -136,9 +136,11 @@ export default function VeiculosPage() {
                   <td className="px-4 py-3 font-mono font-semibold text-xs" style={{ color: "var(--color-rust)" }}>#{v.id}</td>
                   <td className="px-4 py-3 font-mono text-xs font-medium text-gray-700 whitespace-nowrap">{v.placa}</td>
                   <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.ano}</td>
+                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.marca}</td>
                   <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.modelo}</td>
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{v.versao || "—"}</td>
-                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.dono || "—"}</td>
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{v.chassi || "—"}</td>
+                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.proprietario || "—"}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => openEdit(v)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-blue-600 hover:bg-blue-50" aria-label="Editar veículo">
@@ -189,19 +191,21 @@ export default function VeiculosPage() {
 
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
               {[
-                { label: "Placa",  key: "placa",  placeholder: "ABC-1234" },
-                { label: "Ano",    key: "ano",    placeholder: "2024" },
-                { label: "Modelo", key: "modelo", placeholder: "Toyota Corolla" },
-                { label: "Versão", key: "versao", placeholder: "XEi 2.0" },
-                { label: "Dono",   key: "dono",   placeholder: "Nome do proprietário" },
-              ].map(({ label, key, placeholder }) => (
+                { label: "Placa",        key: "placa",        placeholder: "ABC-1234",        required: true  },
+                { label: "Ano",          key: "ano",          placeholder: "2024",             required: true  },
+                { label: "Marca",        key: "marca",        placeholder: "Toyota",           required: true  },
+                { label: "Modelo",       key: "modelo",       placeholder: "Corolla",          required: true  },
+                { label: "Versão",       key: "versao",       placeholder: "XEi 2.0",          required: true  },
+                { label: "Chassi",       key: "chassi",       placeholder: "9BWZZZ377VT004251",required: true  },
+                { label: "Proprietário", key: "proprietario", placeholder: "Nome do proprietário", required: true  },
+              ].map(({ label, key, placeholder, required }) => (
                 <div key={key}>
                   <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-teal)" }}>
                     {label}
                   </label>
                   <input
                     type="text"
-                    required={key !== "versao" && key !== "dono"}
+                    required={required}
                     placeholder={placeholder}
                     value={form[key as keyof typeof form]}
                     onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}

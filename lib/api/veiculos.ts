@@ -4,9 +4,11 @@ export interface Veiculo {
   id?: number;
   placa: string;
   ano: string;
+  marca: string;
   modelo: string;
   versao: string;
-  dono: string;
+  chassi: string;
+  proprietario: string;
 }
 
 export async function listarVeiculos(): Promise<Veiculo[]> {
