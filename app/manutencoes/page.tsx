@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useApp, type Manutencao } from "@/lib/AppContext";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const CATEGORIAS = ["Revisão", "Freios", "Motor", "Suspensão", "Elétrica", "Funilaria", "Outros"];
 
@@ -18,6 +19,7 @@ const emptyForm = {
 export default function ManutencoesPage() {
   const { manutencoes, setManutencoes } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -39,8 +41,10 @@ export default function ManutencoesPage() {
     setForm(emptyForm);
   }
 
-  function handleDelete(id: string) {
-    setManutencoes((prev) => prev.filter((m) => m.id !== id));
+  function handleDelete() {
+    if (confirmId === null) return;
+    setManutencoes((prev) => prev.filter((m) => m.id !== confirmId));
+    setConfirmId(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -106,7 +110,7 @@ export default function ManutencoesPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
                         </svg>
                       </button>
-                      <button onClick={() => handleDelete(m.id)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar manutenção">
+                      <button onClick={() => setConfirmId(m.id)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar manutenção">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -121,6 +125,14 @@ export default function ManutencoesPage() {
           <p className="text-center text-gray-400 py-12 text-sm">Nenhuma manutenção cadastrada.</p>
         )}
       </div>
+
+      {confirmId !== null && (
+        <ConfirmDialog
+          message="Tem certeza que deseja deletar esta manutenção? Esta ação não pode ser desfeita."
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmId(null)}
+        />
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>

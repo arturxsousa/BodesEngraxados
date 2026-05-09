@@ -8,6 +8,7 @@ import {
   deletarVeiculo,
   type Veiculo,
 } from "@/lib/api/veiculos";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const emptyForm = { placa: "", ano: "", modelo: "", versao: "", dono: "" };
 
@@ -19,6 +20,7 @@ export default function VeiculosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [salvando, setSalvando] = useState(false);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -52,12 +54,15 @@ export default function VeiculosPage() {
     setForm(emptyForm);
   }
 
-  async function handleDelete(id: number) {
+  async function handleDelete() {
+    if (confirmId === null) return;
     try {
-      await deletarVeiculo(id);
-      setVeiculos((prev) => prev.filter((v) => v.id !== id));
+      await deletarVeiculo(confirmId);
+      setVeiculos((prev) => prev.filter((v) => v.id !== confirmId));
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Erro ao deletar veículo");
+    } finally {
+      setConfirmId(null);
     }
   }
 
@@ -141,7 +146,7 @@ export default function VeiculosPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
                         </svg>
                       </button>
-                      <button onClick={() => handleDelete(v.id!)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar veículo">
+                      <button onClick={() => setConfirmId(v.id!)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar veículo">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -158,6 +163,14 @@ export default function VeiculosPage() {
           <p className="text-center text-gray-400 py-12 text-sm">Nenhum veículo cadastrado.</p>
         )}
       </div>
+
+      {confirmId !== null && (
+        <ConfirmDialog
+          message="Tem certeza que deseja deletar este veículo? Esta ação não pode ser desfeita."
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmId(null)}
+        />
+      )}
 
       {/* Modal */}
       {modalOpen && (
