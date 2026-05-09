@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
-import NavBar from "@/components/NavBar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,18 +12,11 @@ export const metadata: Metadata = {
   description: "Sistema de gestão de ordens de serviço",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={`${geistSans.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased" style={{ backgroundColor: "var(--color-cream)", color: "var(--color-charcoal)" }}>
-        <NavBar />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {children}
-        </main>
+        {children}
       </body>
     </html>
   );

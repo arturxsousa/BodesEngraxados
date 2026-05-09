@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase";
+import { getProfile, type Profile } from "@/lib/api/profiles";
+import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
   { label: "Veículos", href: "/veiculos" },
@@ -11,17 +15,44 @@ const navLinks = [
   { label: "Buscar", href: "/busca" },
 ];
 
-// Placeholder até a autenticação ser implementada
-const mockUser = {
-  name: "João Silva",
-  email: "joao@bodesgarage.com",
-  initials: "JS",
-};
+function initials(nome: string) {
+  const parts = nome.trim().split(" ");
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function NavBar() {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      const u = data.user;
+      setUser(u);
+      if (u) {
+        const p = await getProfile(u.id);
+        setProfile(p);
+      }
+    }
+    loadUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const u = session?.user ?? null;
+      setUser(u);
+      if (u) {
+        const p = await getProfile(u.id);
+        setProfile(p);
+      } else {
+        setProfile(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -32,6 +63,14 @@ export default function NavBar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+  const displayName = profile?.nome ?? user?.email ?? "";
+  const displayInitials = profile ? initials(profile.nome) : (user?.email?.slice(0, 2).toUpperCase() ?? "?");
 
   return (
     <nav style={{ backgroundColor: "var(--color-charcoal)" }} className="text-white shadow-lg">
@@ -69,9 +108,19 @@ export default function NavBar() {
                 {link.label}
               </Link>
             ))}
+            {profile?.role === "admin" && (
+              <Link
+                href="/admin"
+                className="text-gray-300 text-sm font-medium tracking-wide transition-colors duration-150"
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-rust)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+              >
+                Usuários
+              </Link>
+            )}
           </div>
 
-          {/* Hambúrguer (mobile) — ocupa o centro */}
+          {/* Hambúrguer (mobile) */}
           <div className="flex md:hidden justify-center items-center">
             <button
               className="p-2 rounded-md text-gray-400 hover:text-white transition-colors"
@@ -98,13 +147,13 @@ export default function NavBar() {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-white/10"
               >
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                   style={{ backgroundColor: "var(--color-rust)" }}
                 >
-                  {mockUser.initials}
+                  {displayInitials}
                 </div>
-                <span className="hidden sm:block text-sm text-gray-300 max-w-[120px] truncate">
-                  {mockUser.name}
+                <span className="hidden sm:block text-sm text-gray-300 max-w-[140px] truncate">
+                  {displayName}
                 </span>
                 <svg
                   className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`}
@@ -119,27 +168,15 @@ export default function NavBar() {
                   className="absolute right-0 mt-2 w-56 rounded-lg shadow-xl border z-50"
                   style={{ backgroundColor: "#252525", borderColor: "#383838" }}
                 >
-                  {/* Info do usuário */}
                   <div className="px-4 py-3 border-b" style={{ borderColor: "#383838" }}>
-                    <p className="text-sm font-semibold text-white truncate">{mockUser.name}</p>
-                    <p className="text-xs text-gray-400 truncate mt-0.5">{mockUser.email}</p>
+                    <p className="text-sm font-semibold text-white truncate">{profile?.nome ?? ""}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{user?.email ?? ""}</p>
                   </div>
-
-                  {/* Ações */}
                   <div className="py-1">
-                    <button
-                      className="w-full text-left px-4 py-2 text-sm text-gray-300 flex items-center gap-2 transition-colors hover:bg-white/10"
-                      onClick={() => setDropdownOpen(false)}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      Minha conta
-                    </button>
                     <button
                       className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors hover:bg-white/10"
                       style={{ color: "var(--color-rust)" }}
-                      onClick={() => setDropdownOpen(false)}
+                      onClick={handleSignOut}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -169,10 +206,21 @@ export default function NavBar() {
               {link.label}
             </Link>
           ))}
+          {profile?.role === "admin" && (
+            <Link
+              href="/admin"
+              className="block py-2 px-3 rounded-md text-gray-300 font-medium tracking-wide transition-colors duration-150"
+              onClick={() => setMenuOpen(false)}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-rust)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+            >
+              Usuários
+            </Link>
+          )}
           <div className="border-t pt-3 mt-2" style={{ borderColor: "#383838" }}>
-            <p className="px-3 text-sm font-semibold text-white">{mockUser.name}</p>
-            <p className="px-3 text-xs text-gray-400 mt-0.5">{mockUser.email}</p>
-            <button className="mt-2 px-3 py-2 text-sm flex items-center gap-2" style={{ color: "var(--color-rust)" }}>
+            <p className="px-3 text-sm font-semibold text-white">{profile?.nome ?? ""}</p>
+            <p className="px-3 text-xs text-gray-400 mt-0.5">{user?.email ?? ""}</p>
+            <button onClick={handleSignOut} className="mt-2 px-3 py-2 text-sm flex items-center gap-2" style={{ color: "var(--color-rust)" }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
