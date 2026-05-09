@@ -7,6 +7,8 @@ import Image from "next/image";
 const navLinks = [
   { label: "Veículos", href: "/veiculos" },
   { label: "Manutenções", href: "/manutencoes" },
+  { label: "Proprietários", href: "/proprietarios" },
+  { label: "Buscar", href: "/busca" },
 ];
 
 // Placeholder até a autenticação ser implementada
