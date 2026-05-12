@@ -9,6 +9,7 @@ export interface Manutencao {
   descricao: string;
   pecas: string;
   observacoes?: string;
+  proxima_manutencao?: string;
 }
 
 export function formatarData(data: string): string {

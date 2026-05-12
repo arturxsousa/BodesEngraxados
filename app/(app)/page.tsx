@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const [totalVeiculos, setTotalVeiculos] = useState<number | null>(null);
   const [totalManutencoes, setTotalManutencoes] = useState<number | null>(null);
   const [manutencoesDoMes, setManutencoesDoMes] = useState<number | null>(null);
+  const [manutencoesProgramadas, setManutencoesProgramadas] = useState<number | null>(null);
 
   useEffect(() => {
     listarVeiculos()
@@ -22,19 +23,20 @@ export default function DashboardPage() {
 
     listarManutencoes().then((lista) => {
       setTotalManutencoes(lista.length);
-      setManutencoesDoMes(
-        lista.filter((m) => m.data.startsWith(`${ano}-${mes}`)).length
-      );
+      setManutencoesDoMes(lista.filter((m) => m.data.startsWith(`${ano}-${mes}`)).length);
+      setManutencoesProgramadas(lista.filter((m) => !!m.proxima_manutencao).length);
     }).catch(() => {
       setTotalManutencoes(null);
       setManutencoesDoMes(null);
+      setManutencoesProgramadas(null);
     });
   }, []);
 
   const stats = [
-    { label: "Manutenções no mês",  value: manutencoesDoMes  !== null ? String(manutencoesDoMes)  : "—", icon: "🔧" },
-    { label: "Total de manutenções",value: totalManutencoes  !== null ? String(totalManutencoes)  : "—", icon: "📋" },
-    { label: "Veículos cadastrados", value: totalVeiculos    !== null ? String(totalVeiculos)     : "—", icon: "🚗" },
+    { label: "Manutenções no mês",      value: manutencoesDoMes       !== null ? String(manutencoesDoMes)       : "—", icon: "🔧" },
+    { label: "Total de manutenções",    value: totalManutencoes       !== null ? String(totalManutencoes)       : "—", icon: "📋" },
+    { label: "Manutenções programadas", value: manutencoesProgramadas !== null ? String(manutencoesProgramadas) : "—", icon: "📅" },
+    { label: "Veículos cadastrados",    value: totalVeiculos          !== null ? String(totalVeiculos)          : "—", icon: "🚗" },
   ];
 
   return (
@@ -45,7 +47,7 @@ export default function DashboardPage() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <div
             key={stat.label}

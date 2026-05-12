@@ -22,6 +22,7 @@ const emptyForm = {
   descricao: "",
   pecas: "",
   observacoes: "",
+  proxima_manutencao: "",
 };
 
 export default function ManutencoesPage() {
@@ -32,6 +33,7 @@ export default function ManutencoesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [periodica, setPeriodica] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [confirmId, setConfirmId] = useState<number | null>(null);
 
@@ -54,6 +56,7 @@ export default function ManutencoesPage() {
   function openNew() {
     setEditingId(null);
     setForm(emptyForm);
+    setPeriodica(false);
     setModalOpen(true);
   }
 
@@ -67,7 +70,9 @@ export default function ManutencoesPage() {
       descricao: m.descricao,
       pecas: m.pecas ?? "",
       observacoes: m.observacoes ?? "",
+      proxima_manutencao: m.proxima_manutencao ?? "",
     });
+    setPeriodica(!!m.proxima_manutencao);
     setModalOpen(true);
   }
 
@@ -75,6 +80,7 @@ export default function ManutencoesPage() {
     setModalOpen(false);
     setEditingId(null);
     setForm(emptyForm);
+    setPeriodica(false);
   }
 
   async function handleDelete() {
@@ -93,11 +99,15 @@ export default function ManutencoesPage() {
     e.preventDefault();
     setSalvando(true);
     try {
+      const payload = {
+        ...form,
+        proxima_manutencao: periodica && form.proxima_manutencao ? form.proxima_manutencao : undefined,
+      };
       if (editingId !== null) {
-        const atualizada = await atualizarManutencao(editingId, form);
+        const atualizada = await atualizarManutencao(editingId, payload);
         setManutencoes((prev) => prev.map((m) => m.id === editingId ? atualizada : m));
       } else {
-        const nova = await criarManutencao(form);
+        const nova = await criarManutencao(payload);
         setManutencoes((prev) => [nova, ...prev]);
       }
       closeModal();
@@ -152,7 +162,7 @@ export default function ManutencoesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ borderColor: "#e5e0d5" }}>
-                {["ID", "Categoria", "Data", "Placa", "KM", "Descrição", "Peças Empregadas", "Observações", ""].map((col) => (
+                {["ID", "Categoria", "Data", "Placa", "KM", "Descrição", "Peças Empregadas", "Observações", "Próxima Manutenção", ""].map((col) => (
                   <th key={col} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "var(--color-charcoal)" }}>
                     {col}
                   </th>
@@ -172,6 +182,15 @@ export default function ManutencoesPage() {
                   <td className="px-4 py-3 text-gray-700 max-w-[160px] truncate">{m.descricao}</td>
                   <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate">{m.pecas || "—"}</td>
                   <td className="px-4 py-3 text-gray-500 max-w-[140px] truncate">{m.observacoes || "—"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {m.proxima_manutencao ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#fef9c3", color: "#854d0e" }}>
+                        {formatarData(m.proxima_manutencao)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => openEdit(m)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-blue-600 hover:bg-blue-50" aria-label="Editar manutenção">
@@ -258,6 +277,40 @@ export default function ManutencoesPage() {
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-teal)" }}>Observações</label>
                 <textarea rows={2} placeholder="Observações adicionais..." value={form.observacoes} onChange={(e) => field("observacoes", e.target.value)} className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400 resize-none" style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }} />
+              </div>
+
+              {/* Manutenção periódica */}
+              <div className="border-t pt-4" style={{ borderColor: "#e5e0d5" }}>
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={periodica}
+                    onChange={(e) => {
+                      setPeriodica(e.target.checked);
+                      if (!e.target.checked) field("proxima_manutencao", "");
+                    }}
+                    className="w-4 h-4 rounded accent-orange-600"
+                  />
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--color-teal)" }}>
+                    Manutenção Periódica
+                  </span>
+                </label>
+
+                {periodica && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-teal)" }}>
+                      Data da Próxima Manutenção
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={form.proxima_manutencao}
+                      onChange={(e) => field("proxima_manutencao", e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400"
+                      style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
