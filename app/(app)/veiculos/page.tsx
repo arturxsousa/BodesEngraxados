@@ -8,14 +8,14 @@ import {
   deletarVeiculo,
   type Veiculo,
 } from "@/lib/api/veiculos";
-import { listarProprietarios } from "@/lib/api/proprietarios";
+import { listarProprietarios, type Proprietario } from "@/lib/api/proprietarios";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
-const emptyForm = { placa: "", ano: "", marca: "", modelo: "", versao: "", chassi: "", proprietario: "" };
+const emptyForm = { placa: "", ano: "", marca: "", modelo: "", versao: "", chassi: "", proprietario: "", cpf: "" };
 
 export default function VeiculosPage() {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
-  const [nomes, setNomes] = useState<string[]>([]);
+  const [proprietarios, setProprietarios] = useState<Proprietario[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -28,9 +28,9 @@ export default function VeiculosPage() {
     try {
       setLoading(true);
       setErro(null);
-      const [lista, proprietarios] = await Promise.all([listarVeiculos(), listarProprietarios()]);
+      const [lista, props] = await Promise.all([listarVeiculos(), listarProprietarios()]);
       setVeiculos(lista);
-      setNomes(proprietarios.map((p) => p.nome));
+      setProprietarios(props);
     } catch {
       setErro("Não foi possível conectar ao servidor.");
     } finally {
@@ -40,6 +40,11 @@ export default function VeiculosPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  function handleProprietarioChange(nome: string) {
+    const p = proprietarios.find((x) => x.nome === nome);
+    setForm((prev) => ({ ...prev, proprietario: nome, cpf: p?.cpf ?? "" }));
+  }
+
   function openNew() {
     setEditingId(null);
     setForm(emptyForm);
@@ -48,7 +53,7 @@ export default function VeiculosPage() {
 
   function openEdit(v: Veiculo) {
     setEditingId(v.id!);
-    setForm({ placa: v.placa, ano: v.ano, marca: v.marca, modelo: v.modelo, versao: v.versao, chassi: v.chassi, proprietario: v.proprietario });
+    setForm({ placa: v.placa, ano: v.ano, marca: v.marca, modelo: v.modelo, versao: v.versao, chassi: v.chassi, proprietario: v.proprietario, cpf: v.cpf });
     setModalOpen(true);
   }
 
@@ -96,12 +101,12 @@ export default function VeiculosPage() {
           Veículos
         </h1>
         <div className="flex items-center gap-3">
-          {!loading && nomes.length === 0 && (
+          {!loading && proprietarios.length === 0 && (
             <span className="text-xs text-gray-400 italic">Cadastre um proprietário antes de registrar veículos</span>
           )}
           <button
             onClick={openNew}
-            disabled={nomes.length === 0}
+            disabled={proprietarios.length === 0}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ backgroundColor: "var(--color-rust)" }}
           >
@@ -130,7 +135,7 @@ export default function VeiculosPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ borderColor: "#e5e0d5" }}>
-                {["ID", "Placa", "Ano", "Marca", "Modelo", "Versão", "Chassi", "Proprietário", ""].map((col) => (
+                {["ID", "Placa", "Ano", "Marca", "Modelo", "Versão", "Chassi", "Proprietário", "CPF", ""].map((col) => (
                   <th key={col} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "var(--color-charcoal)" }}>
                     {col}
                   </th>
@@ -148,6 +153,7 @@ export default function VeiculosPage() {
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{v.versao}</td>
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{v.chassi}</td>
                   <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.proprietario}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">{v.cpf}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => openEdit(v)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-blue-600 hover:bg-blue-50" aria-label="Editar veículo">
@@ -167,7 +173,6 @@ export default function VeiculosPage() {
             </tbody>
           </table>
         )}
-
         {!loading && !erro && veiculos.length === 0 && (
           <p className="text-center text-gray-400 py-12 text-sm">Nenhum veículo cadastrado.</p>
         )}
@@ -225,13 +230,25 @@ export default function VeiculosPage() {
                 <select
                   required
                   value={form.proprietario}
-                  onChange={(e) => setForm((prev) => ({ ...prev, proprietario: e.target.value }))}
+                  onChange={(e) => handleProprietarioChange(e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400"
                   style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }}
                 >
                   <option value="">Selecione um proprietário</option>
-                  {nomes.map((n) => <option key={n} value={n}>{n}</option>)}
+                  {proprietarios.map((p) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-teal)" }}>CPF</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={form.cpf}
+                  placeholder="Preenchido automaticamente"
+                  className="w-full px-3 py-2 text-sm rounded-md border cursor-not-allowed"
+                  style={{ borderColor: "#d9d0c0", backgroundColor: "#f5f5f5", color: "#777" }}
+                />
               </div>
 
               <div className="flex gap-3 pt-2">

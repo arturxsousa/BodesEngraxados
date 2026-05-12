@@ -9,6 +9,7 @@ export interface Veiculo {
   versao: string;
   chassi: string;
   proprietario: string;
+  cpf: string;
 }
 
 export async function listarVeiculos(): Promise<Veiculo[]> {
