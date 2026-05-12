@@ -72,6 +72,75 @@ export default function NavBar() {
   const displayName = profile?.nome ?? user?.email ?? "";
   const displayInitials = profile ? initials(profile.nome) : (user?.email?.slice(0, 2).toUpperCase() ?? "?");
 
+  if (profile && profile.role !== "admin") {
+    return (
+      <nav style={{ backgroundColor: "var(--color-charcoal)" }} className="text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14">
+            <Link href="/" className="flex items-center gap-2">
+              <Image
+                src="/logo-bode.png"
+                alt="Bodes Engraxados"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+              <span className="hidden sm:block text-xl font-bold tracking-wide">
+                <span style={{ color: "var(--color-rust)" }}>BODES</span>
+                {" "}
+                <span className="text-white font-semibold">ENGRAXADOS</span>
+              </span>
+            </Link>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-white/10"
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                  style={{ backgroundColor: "var(--color-rust)" }}
+                >
+                  {displayInitials}
+                </div>
+                <span className="hidden sm:block text-sm text-gray-300 max-w-[140px] truncate">{displayName}</span>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {dropdownOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-56 rounded-lg shadow-xl border z-50"
+                  style={{ backgroundColor: "#252525", borderColor: "#383838" }}
+                >
+                  <div className="px-4 py-3 border-b" style={{ borderColor: "#383838" }}>
+                    <p className="text-sm font-semibold text-white truncate">{profile.nome}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{user?.email ?? ""}</p>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors hover:bg-white/10"
+                      style={{ color: "var(--color-rust)" }}
+                      onClick={handleSignOut}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Sair
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <nav style={{ backgroundColor: "var(--color-charcoal)" }} className="text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

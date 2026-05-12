@@ -42,6 +42,15 @@ export async function atualizarVeiculo(id: number, veiculo: Omit<Veiculo, "id">)
   return data;
 }
 
+export async function listarPlacasPorCpf(cpf: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("veiculos")
+    .select("placa")
+    .eq("cpf", cpf);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((v: { placa: string }) => v.placa);
+}
+
 export async function deletarVeiculo(id: number): Promise<void> {
   const { error } = await supabase
     .from("veiculos")

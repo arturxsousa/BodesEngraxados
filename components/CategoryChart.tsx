@@ -33,16 +33,22 @@ function agruparPorCategoria(lista: Manutencao[]) {
     .sort((a, b) => b.total - a.total);
 }
 
-export default function CategoryChart() {
+interface Props {
+  placas?: string[];
+}
+
+export default function CategoryChart({ placas }: Props = {}) {
   const [active, setActive] = useState<typeof TABS[number]>("1 mês");
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     listarManutencoes()
-      .then(setManutencoes)
+      .then((lista) => {
+        setManutencoes(placas ? lista.filter((m) => placas.includes(m.placa)) : lista);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [JSON.stringify(placas)]);
 
   const data = useMemo(
     () => agruparPorCategoria(filtrarPorPeriodo(manutencoes, active)),

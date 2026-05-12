@@ -3,20 +3,30 @@
 import { useEffect, useState } from "react";
 import { listarManutencoes, formatarData, type Manutencao } from "@/lib/api/manutencoes";
 
-export default function RecentOrders() {
+interface Props {
+  placas?: string[];
+  titulo?: string;
+}
+
+export default function RecentOrders({ placas, titulo }: Props = {}) {
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     listarManutencoes()
-      .then((lista) => setManutencoes(lista.slice(0, 10)))
+      .then((lista) => {
+        const filtrada = placas ? lista.filter((m) => placas.includes(m.placa)) : lista;
+        setManutencoes(filtrada.slice(0, 10));
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [JSON.stringify(placas)]);
+
+  const heading = titulo ?? `Últimas ${manutencoes.length > 0 ? Math.min(manutencoes.length, 10) : ""} Manutenções`;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 h-full">
       <h2 className="text-sm font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--color-teal)" }}>
-        Últimas {manutencoes.length > 0 ? Math.min(manutencoes.length, 10) : ""} Manutenções
+        {heading}
       </h2>
 
       {loading ? (
