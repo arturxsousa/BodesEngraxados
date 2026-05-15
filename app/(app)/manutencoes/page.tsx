@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   listarManutencoes,
   criarManutencao,
@@ -25,7 +26,11 @@ const emptyForm = {
   proxima_manutencao: "",
 };
 
-export default function ManutencoesPage() {
+function ManutencoesPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const filtroParam = searchParams.get("filtro") ?? "";
+
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
   const [placas, setPlacas] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +41,20 @@ export default function ManutencoesPage() {
   const [periodica, setPeriodica] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [confirmId, setConfirmId] = useState<number | null>(null);
+
+  const now = new Date();
+  const anoMes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const manutencoesFiltradas = manutencoes.filter((m) => {
+    if (filtroParam === "programadas") return !!m.proxima_manutencao;
+    if (filtroParam === "mes") return m.data.startsWith(anoMes);
+    return true;
+  });
+
+  const labelFiltro: Record<string, string> = {
+    programadas: "Manutenções Programadas",
+    mes: "Manutenções do Mês",
+  };
 
   const carregar = useCallback(async () => {
     try {
@@ -145,6 +164,24 @@ export default function ManutencoesPage() {
         </div>
       </div>
 
+      {filtroParam && labelFiltro[filtroParam] && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border text-sm" style={{ backgroundColor: "#f0ebe0", borderColor: "#d9d0c0" }}>
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "var(--color-teal)" }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+          </svg>
+          <span className="font-semibold text-xs uppercase tracking-widest" style={{ color: "var(--color-teal)" }}>
+            Filtro: {labelFiltro[filtroParam]}
+          </span>
+          <button
+            onClick={() => router.push("/manutencoes")}
+            className="ml-auto text-xs underline font-medium"
+            style={{ color: "var(--color-rust)" }}
+          >
+            Limpar filtro
+          </button>
+        </div>
+      )}
+
       {erro && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg border text-sm" style={{ backgroundColor: "#fff5f5", borderColor: "#fca5a5", color: "#b91c1c" }}>
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,8 +207,8 @@ export default function ManutencoesPage() {
               </tr>
             </thead>
             <tbody>
-              {manutencoes.map((m, i) => (
-                <tr key={m.id} className="border-b transition-colors hover:bg-orange-50" style={{ borderColor: i === manutencoes.length - 1 ? "transparent" : "#f0ebe0" }}>
+              {manutencoesFiltradas.map((m, i) => (
+                <tr key={m.id} className="border-b transition-colors hover:bg-orange-50" style={{ borderColor: i === manutencoesFiltradas.length - 1 ? "transparent" : "#f0ebe0" }}>
                   <td className="px-4 py-3 font-mono font-semibold text-xs whitespace-nowrap" style={{ color: "var(--color-rust)" }}>#{m.id}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#f0ebe0", color: "var(--color-teal)" }}>{m.categoria}</span>
@@ -210,8 +247,10 @@ export default function ManutencoesPage() {
             </tbody>
           </table>
         )}
-        {!loading && !erro && manutencoes.length === 0 && (
-          <p className="text-center text-gray-400 py-12 text-sm">Nenhuma manutenção cadastrada.</p>
+        {!loading && !erro && manutencoesFiltradas.length === 0 && (
+          <p className="text-center text-gray-400 py-12 text-sm">
+            {filtroParam ? "Nenhuma manutenção encontrada para este filtro." : "Nenhuma manutenção cadastrada."}
+          </p>
         )}
       </div>
 
@@ -326,5 +365,13 @@ export default function ManutencoesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ManutencoesPage() {
+  return (
+    <Suspense>
+      <ManutencoesPageInner />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { getProfile } from "@/lib/api/profiles";
 import { listarManutencoes } from "@/lib/api/manutencoes";
@@ -62,21 +63,25 @@ export default function DashboardPage() {
       label: isAdmin ? "Manutenções no mês" : "Suas manutenções nesse mês",
       value: manutencoesDoMes !== null ? String(manutencoesDoMes) : "—",
       icon: "🔧",
+      href: "/manutencoes?filtro=mes",
     },
     {
       label: isAdmin ? "Total de manutenções" : "Todas as suas manutenções",
       value: totalManutencoes !== null ? String(totalManutencoes) : "—",
       icon: "📋",
+      href: "/manutencoes",
     },
     {
       label: isAdmin ? "Manutenções programadas" : "Suas manutenções programadas",
       value: manutencoesProgramadas !== null ? String(manutencoesProgramadas) : "—",
       icon: "📅",
+      href: "/manutencoes?filtro=programadas",
     },
     {
       label: "Veículos cadastrados",
       value: totalVeiculos !== null ? String(totalVeiculos) : "—",
       icon: "🚗",
+      href: "/veiculos",
     },
   ];
 
@@ -90,9 +95,10 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <div
+          <Link
             key={stat.label}
-            className="bg-white rounded-lg shadow-sm border-l-4 p-5 flex items-center gap-4"
+            href={stat.href}
+            className="bg-white rounded-lg shadow-sm border-l-4 p-5 flex items-center gap-4 transition-shadow hover:shadow-md hover:scale-[1.02] active:scale-[0.99] cursor-pointer"
             style={{ borderLeftColor: "var(--color-rust)", borderTopColor: "#e5e0d5", borderRightColor: "#e5e0d5", borderBottomColor: "#e5e0d5" }}
           >
             <span className="text-3xl">{stat.icon}</span>
@@ -104,7 +110,7 @@ export default function DashboardPage() {
                 {stat.value}
               </p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
