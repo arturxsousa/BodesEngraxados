@@ -13,6 +13,7 @@ const navLinks = [
   { label: "Manutenções", href: "/manutencoes" },
   { label: "Proprietários", href: "/proprietarios" },
   { label: "Buscar", href: "/busca" },
+  { label: "Biblioteca", href: "/biblioteca" },
 ];
 
 function initials(nome: string) {
@@ -91,6 +92,14 @@ export default function NavBar() {
                 <span className="text-white font-semibold">ENGRAXADOS</span>
               </span>
             </Link>
+            <Link
+              href="/biblioteca"
+              className="text-gray-300 text-sm font-medium tracking-wide transition-colors duration-150"
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-rust)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+            >
+              Biblioteca
+            </Link>
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -144,7 +153,7 @@ export default function NavBar() {
   return (
     <nav style={{ backgroundColor: "var(--color-charcoal)" }} className="text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-3 items-center h-16">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center h-16">
 
           {/* Esquerda — logo + título */}
           <div className="flex items-center">
