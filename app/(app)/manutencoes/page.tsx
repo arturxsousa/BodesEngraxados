@@ -10,8 +10,10 @@ import {
   formatarData,
   type Manutencao,
 } from "@/lib/api/manutencoes";
-import { listarVeiculos } from "@/lib/api/veiculos";
+import { listarVeiculos, listarPlacasPorCpf } from "@/lib/api/veiculos";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { supabase } from "@/lib/supabase";
+import { getProfile } from "@/lib/api/profiles";
 
 const CATEGORIAS = ["Revisão", "Freios", "Motor", "Suspensão", "Elétrica", "Funilaria", "Outros"];
 
@@ -41,15 +43,19 @@ function ManutencoesPageInner() {
   const [periodica, setPeriodica] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [placasUsuario, setPlacasUsuario] = useState<string[] | null>(null);
 
   const now = new Date();
   const anoMes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const manutencoesFiltradas = manutencoes.filter((m) => {
-    if (filtroParam === "programadas") return !!m.proxima_manutencao;
-    if (filtroParam === "mes") return m.data.startsWith(anoMes);
-    return true;
-  });
+  const manutencoesFiltradas = manutencoes
+    .filter((m) => isAdmin || placasUsuario === null || placasUsuario.includes(m.placa))
+    .filter((m) => {
+      if (filtroParam === "programadas") return !!m.proxima_manutencao;
+      if (filtroParam === "mes") return m.data.startsWith(anoMes);
+      return true;
+    });
 
   const labelFiltro: Record<string, string> = {
     programadas: "Manutenções Programadas",
@@ -60,9 +66,22 @@ function ManutencoesPageInner() {
     try {
       setLoading(true);
       setErro(null);
-      const [lista, veiculos] = await Promise.all([listarManutencoes(), listarVeiculos()]);
-      setManutencoes(lista);
-      setPlacas(veiculos.map((v) => v.placa));
+      const { data } = await supabase.auth.getUser();
+      const profile = data.user ? await getProfile(data.user.id) : null;
+      const admin = profile?.role === "admin";
+      setIsAdmin(admin);
+      if (!admin && profile?.cpf) {
+        const userPlacas = await listarPlacasPorCpf(profile.cpf);
+        setPlacasUsuario(userPlacas);
+        const [lista, veiculos] = await Promise.all([listarManutencoes(), listarVeiculos()]);
+        setManutencoes(lista);
+        setPlacas(veiculos.filter((v) => userPlacas.includes(v.placa)).map((v) => v.placa));
+      } else {
+        const [lista, veiculos] = await Promise.all([listarManutencoes(), listarVeiculos()]);
+        setManutencoes(lista);
+        setPlacas(veiculos.map((v) => v.placa));
+        setPlacasUsuario(null);
+      }
     } catch {
       setErro("Não foi possível carregar os dados.");
     } finally {
@@ -146,22 +165,24 @@ function ManutencoesPageInner() {
         <h1 className="text-3xl font-bold tracking-wide uppercase" style={{ color: "var(--color-charcoal)" }}>
           Manutenções
         </h1>
-        <div className="flex items-center gap-3">
-          {!loading && placas.length === 0 && (
-            <span className="text-xs text-gray-400 italic">Cadastre um veículo antes de registrar manutenções</span>
-          )}
-          <button
-            onClick={openNew}
-            disabled={placas.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: "var(--color-rust)" }}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nova Manutenção
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-3">
+            {!loading && placas.length === 0 && (
+              <span className="text-xs text-gray-400 italic">Cadastre um veículo antes de registrar manutenções</span>
+            )}
+            <button
+              onClick={openNew}
+              disabled={placas.length === 0}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "var(--color-rust)" }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nova Manutenção
+            </button>
+          </div>
+        )}
       </div>
 
       {filtroParam && labelFiltro[filtroParam] && (
@@ -199,7 +220,7 @@ function ManutencoesPageInner() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ borderColor: "#e5e0d5" }}>
-                {["ID", "Categoria", "Data", "Placa", "KM", "Descrição", "Peças Empregadas", "Observações", "Próxima Manutenção", ""].map((col) => (
+                {[...["ID", "Categoria", "Data", "Placa", "KM", "Descrição", "Peças Empregadas", "Observações", "Próxima Manutenção"], ...(isAdmin ? [""] : [])].map((col) => (
                   <th key={col} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "var(--color-charcoal)" }}>
                     {col}
                   </th>
@@ -228,20 +249,22 @@ function ManutencoesPageInner() {
                       <span className="text-xs text-gray-400">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      <button onClick={() => openEdit(m)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-blue-600 hover:bg-blue-50" aria-label="Editar manutenção">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
-                        </svg>
-                      </button>
-                      <button onClick={() => setConfirmId(m.id!)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar manutenção">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 justify-end">
+                        <button onClick={() => openEdit(m)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-blue-600 hover:bg-blue-50" aria-label="Editar manutenção">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+                          </svg>
+                        </button>
+                        <button onClick={() => setConfirmId(m.id!)} className="p-1.5 rounded-md text-gray-400 transition-colors hover:text-red-600 hover:bg-red-50" aria-label="Deletar manutenção">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
