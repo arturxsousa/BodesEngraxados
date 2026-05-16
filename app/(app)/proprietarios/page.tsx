@@ -10,6 +10,7 @@ import {
   type Proprietario,
 } from "@/lib/api/proprietarios";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { formatCpf } from "@/lib/utils";
 
 const emptyForm = { nome: "", data_nascimento: "", cpf: "", email: "" };
 
@@ -218,7 +219,7 @@ export default function ProprietariosPage() {
                   required
                   placeholder="000.000.000-00"
                   value={form.cpf}
-                  onChange={(e) => field("cpf", e.target.value)}
+                  onChange={(e) => field("cpf", formatCpf(e.target.value))}
                   className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400"
                   style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }}
                 />

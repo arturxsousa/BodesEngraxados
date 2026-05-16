@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { formatCpf } from "@/lib/utils";
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -86,7 +87,7 @@ export default function CadastroPage() {
                   required
                   placeholder={placeholder}
                   value={form[key as keyof typeof form]}
-                  onChange={(e) => field(key as keyof typeof form, e.target.value)}
+                  onChange={(e) => field(key as keyof typeof form, key === "cpf" ? formatCpf(e.target.value) : e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-md border outline-none focus:border-orange-400 transition-colors"
                   style={{ borderColor: "#d9d0c0", backgroundColor: "var(--color-cream)" }}
                 />
